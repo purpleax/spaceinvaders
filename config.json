@@ -1,0 +1,42 @@
+{
+  "company": {
+    "name": "Fastly",
+    "tagline": "Bot Protection. Redefined.",
+    "booth": "Booth #42"
+  },
+  "event": {
+    "name": "TechConf 2026",
+    "dates": "March 18–20, 2026",
+    "location": "Sydney Convention Centre"
+  },
+  "attract": {
+    "headline": "CAN YOU STOP THE BOTS?",
+    "subheadline": "Blast the bots before they reach your servers!",
+    "callToAction": "PRESS START TO PLAY",
+    "leaderboardTitle": "TODAY'S TOP BOT BLASTERS",
+    "prizeMessage": "🏆 Daily High Score Wins a Prize — See Booth Staff",
+    "scrollingMessages": [
+      "Fastly stops over 10 billion bot attacks daily",
+      "Real-time bot detection with zero latency",
+      "AI-powered threat intelligence — always learning",
+      "Protecting the world's leading enterprises",
+      "Ask us about Fastly's enterprise bot protection suite"
+    ]
+  },
+  "game": {
+    "title": "BOT BLASTER",
+    "subtitle": "Defend Your Infrastructure",
+    "maxNameLength": 12,
+    "leaderboardSize": 10
+  },
+  "gameplay": {
+    "_comment": "Tune these for your booth. speedMultiplier = Wave 1 speed. speedIncreasePerWave = added each wave (e.g. 0.5 means Wave 1=1.5x, Wave 2=2.0x, Wave 3=2.5x).",
+    "lives": 1,
+    "speedMultiplier": 1.5,
+    "speedIncreasePerWave": 0.5,
+    "shootCooldownMs": 800,
+    "_speedMultiplier_options": "Wave 1 base speed: 1.0 = relaxed, 1.5 = fast (default), 2.0 = very fast",
+    "_speedIncreasePerWave_options": "Added per wave: 0.5 = noticeable ramp (default), 0.25 = gentle, 1.0 = brutal",
+    "_shootCooldownMs_options": "600 = slightly quick, 800 = original Space Invaders feel (default), 1000 = slower/harder"
+  }
+}

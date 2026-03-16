@@ -1,0 +1,11 @@
+services:
+  bot-blaster:
+    build: .
+    image: bot-blaster:latest
+    container_name: bot-blaster
+    ports:
+      - "8888:80"        # Change left side to use a different host port, e.g. "8080:80"
+    restart: unless-stopped
+    volumes:
+      # Mount config.json so you can edit booth text without rebuilding the image
+      - ./config.json:/usr/share/nginx/html/config.json:ro
