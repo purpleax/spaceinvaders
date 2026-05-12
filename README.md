@@ -103,20 +103,16 @@ nginx serves it with `no-cache` headers, so the browser always fetches the lates
 
 ## Daily Leaderboard Reset
 
-Scores are stored in the browser session (in-memory JavaScript) — they reset automatically
-when the browser is refreshed or the page reloads. To deliberately reset between event days:
+Scores are stored in the **booth browser's `localStorage`** — they survive page refreshes and
+container restarts automatically. Scores from one browser are completely isolated from any
+other browser that visits the same URL.
 
-```bash
-# Quickest reset: just refresh the browser displaying the game
-# OR restart the container (also clears any cached state):
-docker compose restart
-```
+To reset scores between event days, hold **`R` for 2 seconds** on the attract screen.
+The leaderboard title will change to *"Hold to reset scores…"* while the key is held —
+release early to cancel. On completion it shows *"Scores cleared!"* briefly before restoring.
 
-Automated morning reset via cron:
-```bash
-# Add to crontab (crontab -e) — resets at 8am daily
-0 8 * * * docker compose -f /path/to/bot-blaster/docker-compose.yml restart
-```
+Automated morning reset via cron (opens the URL and simulates the key combo) is not needed
+for most setups — the hold-R method is quick enough for staff at the start of each day.
 
 ---
 
@@ -137,9 +133,10 @@ docker compose up -d --build
 | Action | Keyboard | Controller |
 |---|---|---|
 | Move | ← → | Left stick / D-Pad |
-| Fire | Space | A or B |
+| Fire | Space | A / B / X / Y |
 | Pause | Esc / P | Start |
 | Quit to menu | Esc again (while paused) | Start again (while paused) or Select |
+| Reset leaderboard | Hold R for 2 s (attract screen only) | — |
 
 ---
 

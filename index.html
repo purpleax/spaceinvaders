@@ -1101,8 +1101,11 @@ function renderDemoBots() {
   `).join('');
 }
 
-// ── LEADERBOARD (in-memory) ──
-let leaderboard = [];
+// ── LEADERBOARD ──
+const SCORES_KEY = 'botblaster_scores';
+let leaderboard = (() => {
+  try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || []; } catch { return []; }
+})();
 
 function updateAttractLeaderboard() {
   const list = el('attract-leaderboard');
@@ -1129,6 +1132,7 @@ function addLeaderboardEntry(name, score) {
   leaderboard.sort((a, b) => b.score - a.score);
   const maxEntries = CONFIG ? CONFIG.game.leaderboardSize : 10;
   leaderboard = leaderboard.slice(0, maxEntries);
+  try { localStorage.setItem(SCORES_KEY, JSON.stringify(leaderboard)); } catch {}
   updateAttractLeaderboard();
 }
 
@@ -1389,7 +1393,7 @@ function updateGame(dt) {
   const inputX = getInputX();
   const boost = getInputBoost();
   const speed = boost ? PLAYER_SPEED_BOOST : PLAYER_SPEED;
-  gs.player.x = Math.max(20, Math.min(GAME_W - 20, gs.player.x + inputX * speed));
+  gs.player.x = Math.max(20, Math.min(GAME_W - 20, gs.player.x + inputX * speed * dt * 60));
 
   // Shooting
   // Original Space Invaders rule: only 1 bullet on screen, plus a time gate
@@ -1404,7 +1408,7 @@ function updateGame(dt) {
 
   // Move player bullets
   gs.bullets = gs.bullets.filter(b => {
-    b.y -= b.speed;
+    b.y -= b.speed * dt * 60;
     return b.y > -20;
   });
 
@@ -1425,7 +1429,7 @@ function updateGame(dt) {
 
   // Move enemy bullets
   gs.enemyBullets = gs.enemyBullets.filter(b => {
-    b.y += ENEMY_BULLET_SPEED * (1 + gs.wave * 0.05);
+    b.y += ENEMY_BULLET_SPEED * (1 + gs.wave * 0.05) * dt * 60;
     return b.y < GAME_H + 20;
   });
 
@@ -1435,7 +1439,7 @@ function updateGame(dt) {
     spawnUFO();
   }
   if (gs.ufoActive && gs.ufo) {
-    gs.ufo.x += gs.ufo.speed;
+    gs.ufo.x += gs.ufo.speed * dt * 60;
     if (gs.ufo.x > GAME_W + 60 || gs.ufo.x < -60) {
       gs.ufoActive = false;
       gs.ufo = null;
@@ -1554,9 +1558,9 @@ function updateGame(dt) {
 
   // Particles
   gs.particles = gs.particles.filter(p => {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.05; // gravity
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+    p.vy += 0.05 * dt * 60; // gravity
     p.life -= dt;
     return p.life > 0;
   });
@@ -1564,7 +1568,7 @@ function updateGame(dt) {
   // Floating score/label text
   if (gs.floatTexts) {
     gs.floatTexts = gs.floatTexts.filter(t => {
-      t.y -= 0.8;   // float upward
+      t.y -= 0.8 * dt * 60;   // float upward
       t.life -= dt;
       return t.life > 0;
     });
@@ -2302,6 +2306,33 @@ function getInputBoost() {
     (getGamepad()?.buttons[3]?.pressed) || (getGamepad()?.buttons[2]?.pressed);
 }
 
+// Hold R for 2 seconds on the attract screen to reset the leaderboard
+let _resetHoldTimer = null;
+window.addEventListener('keydown', e => {
+  if (e.code !== 'KeyR' || e.repeat || gameRunning) return;
+  if (el('attract-screen').classList.contains('hidden')) return;
+  if (_resetHoldTimer) return;
+  const title = el('cfg-lb-title');
+  if (title) title.textContent = 'Hold to reset scores...';
+  _resetHoldTimer = setTimeout(() => {
+    _resetHoldTimer = null;
+    leaderboard = [];
+    try { localStorage.removeItem(SCORES_KEY); } catch {}
+    updateAttractLeaderboard();
+    if (title) {
+      title.textContent = 'Scores cleared!';
+      setTimeout(() => { if (CONFIG) title.textContent = CONFIG.attract.leaderboardTitle; }, 2000);
+    }
+  }, 2000);
+});
+window.addEventListener('keyup', e => {
+  if (e.code !== 'KeyR' || !_resetHoldTimer) return;
+  clearTimeout(_resetHoldTimer);
+  _resetHoldTimer = null;
+  const title = el('cfg-lb-title');
+  if (title && CONFIG) title.textContent = CONFIG.attract.leaderboardTitle;
+});
+
 // Gamepad support
 let _gpIndex = null;
 window.addEventListener('gamepadconnected', e => { _gpIndex = e.gamepad.index; });
@@ -2314,14 +2345,19 @@ function getGamepad() {
 }
 
 // Poll gamepad for Start/Options/Select buttons
+// Debounce flags must live here, not on the gamepad snapshot — getGamepad() returns a
+// fresh object each call so any property set on it is lost on the next tick.
+let _gpStartWasPressed = false;
+let _gpSelectWasPressed = false;
+
 setInterval(() => {
   const gp = getGamepad();
   if (!gp) return;
 
   // Start/Options (button 9) — pause or quit
   if (gp.buttons[9]?.pressed || gp.buttons[8]?.pressed) {
-    if (!gp._startWasPressed) {
-      gp._startWasPressed = true;
+    if (!_gpStartWasPressed) {
+      _gpStartWasPressed = true;
       if (gameRunning) {
         if (gamePaused) {
           goToAttract(); // second press quits to menu
@@ -2331,15 +2367,15 @@ setInterval(() => {
       }
     }
   } else {
-    gp._startWasPressed = false;
+    _gpStartWasPressed = false;
   }
 
   // Select/Back (button 8 alone on some controllers) — always quit to menu when paused
-  if (gp.buttons[8]?.pressed && gamePaused && !gp._selectWasPressed) {
-    gp._selectWasPressed = true;
+  if (gp.buttons[8]?.pressed && gamePaused && !_gpSelectWasPressed) {
+    _gpSelectWasPressed = true;
     goToAttract();
   } else if (!gp.buttons[8]?.pressed) {
-    gp._selectWasPressed = false;
+    _gpSelectWasPressed = false;
   }
 }, 100);
 
