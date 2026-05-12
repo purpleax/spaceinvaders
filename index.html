@@ -2344,39 +2344,58 @@ function getGamepad() {
   return null;
 }
 
-// Poll gamepad for Start/Options/Select buttons
-// Debounce flags must live here, not on the gamepad snapshot — getGamepad() returns a
-// fresh object each call so any property set on it is lost on the next tick.
-let _gpStartWasPressed = false;
-let _gpSelectWasPressed = false;
+// Poll gamepad for menu navigation and pause/quit.
+// _prevGpButtons stores the pressed state from the last tick so we can detect
+// a fresh press (edge detection) rather than firing every tick while held.
+// These must be module-level — getGamepad() returns a fresh snapshot each call
+// so storing state on the gamepad object itself is lost immediately.
+let _prevGpButtons = [];
 
 setInterval(() => {
   const gp = getGamepad();
-  if (!gp) return;
+  if (!gp) { _prevGpButtons = []; return; }
 
-  // Start/Options (button 9) — pause or quit
-  if (gp.buttons[9]?.pressed || gp.buttons[8]?.pressed) {
-    if (!_gpStartWasPressed) {
-      _gpStartWasPressed = true;
-      if (gameRunning) {
-        if (gamePaused) {
-          goToAttract(); // second press quits to menu
-        } else {
-          togglePause();
-        }
+  const justPressed = idx => gp.buttons[idx]?.pressed && !_prevGpButtons[idx];
+
+  // Attract screen — any face button or Start begins the game
+  if (!gameRunning && !el('attract-screen').classList.contains('hidden')) {
+    if (justPressed(0) || justPressed(1) || justPressed(2) || justPressed(3) || justPressed(9)) {
+      _prevGpButtons = Array.from(gp.buttons, b => b?.pressed || false);
+      startGame();
+      return;
+    }
+  }
+
+  // Game-over overlay — A / Start restarts, B / Select goes to attract
+  if (!gameRunning && !el('gameover-overlay').classList.contains('hidden')) {
+    if (justPressed(0) || justPressed(9)) {
+      _prevGpButtons = Array.from(gp.buttons, b => b?.pressed || false);
+      restartGame();
+      return;
+    }
+    if (justPressed(1) || justPressed(8)) {
+      _prevGpButtons = Array.from(gp.buttons, b => b?.pressed || false);
+      goToAttract();
+      return;
+    }
+  }
+
+  // In-game — Start/Options pauses; second press while paused quits to attract
+  if (gameRunning) {
+    if (justPressed(9) || justPressed(8)) {
+      if (gamePaused) {
+        goToAttract();
+      } else {
+        togglePause();
       }
     }
-  } else {
-    _gpStartWasPressed = false;
+    // Select/Back alone while paused always quits
+    if (justPressed(8) && gamePaused) {
+      goToAttract();
+    }
   }
 
-  // Select/Back (button 8 alone on some controllers) — always quit to menu when paused
-  if (gp.buttons[8]?.pressed && gamePaused && !_gpSelectWasPressed) {
-    _gpSelectWasPressed = true;
-    goToAttract();
-  } else if (!gp.buttons[8]?.pressed) {
-    _gpSelectWasPressed = false;
-  }
+  _prevGpButtons = Array.from(gp.buttons, b => b?.pressed || false);
 }, 100);
 
 // ── SCREEN TRANSITIONS ──
